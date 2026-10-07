@@ -1,0 +1,65 @@
+name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Verify export-test prerequisites
+        run: |
+          bash --version
+          jq --version
+      - run: npm run check
+      - run: npm test
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run isolated headless browser regression
+        run: |
+          node scripts/serve.js >"$RUNNER_TEMP/server.log" 2>&1 &
+          server_pid=$!
+          google-chrome --headless --no-first-run --no-default-browser-check \
+            --disable-background-networking --remote-debugging-port=9333 \
+            --user-data-dir="$RUNNER_TEMP/lightning-lens-chrome" \
+            http://127.0.0.1:4173 >"$RUNNER_TEMP/chrome.log" 2>&1 &
+          chrome_pid=$!
+          trap 'kill "$chrome_pid" "$server_pid" 2>/dev/null || true' EXIT
+          node --input-type=module <<'JS'
+          for (let attempt = 0; attempt < 100; attempt++) {
+            try {
+              const app = await fetch('http://127.0.0.1:4173');
+              const pages = await (await fetch('http://127.0.0.1:9333/json/list')).json();
+              if (app.ok && pages.some(page =>
+                page.type === 'page' && page.url.startsWith('http://127.0.0.1:4173/'))) {
+                process.exit(0);
+              }
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          throw new Error('Development server or headless Chrome did not become ready');
+          JS
+          npm run test:browser
+      - name: Upload browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure
+          retention-days: 7
+          path: |
+            artifacts/
+            ${{ runner.temp }}/server.log
+            ${{ runner.temp }}/chrome.log

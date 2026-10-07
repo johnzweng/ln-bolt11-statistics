@@ -1,0 +1,30 @@
+{
+  "name": "ln-bolt11-statistics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first BOLT11 statistics for Lightning node operators",
+  "scripts": {
+    "dev": "node scripts/serve.js",
+    "check": "node scripts/check.js",
+    "test": "node --test test/*.test.js",
+    "test:real": "node scripts/benchmark-real.js",
+    "test:browser": "node scripts/browser-smoke.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnzweng/ln-bolt11-statistics.git"
+  },
+  "homepage": "https://github.com/johnzweng/ln-bolt11-statistics#readme",
+  "bugs": "https://github.com/johnzweng/ln-bolt11-statistics/issues",
+  "keywords": [
+    "bitcoin",
+    "lightning",
+    "bolt11",
+    "statistics"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}
